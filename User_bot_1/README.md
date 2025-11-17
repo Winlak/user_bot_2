@@ -111,15 +111,22 @@ authorisation session between runs.
 
 ## Docker Compose
 
-A `docker-compose.yml` file is provided for convenience:
 
-```bash
 docker compose up --build
 ```
 
 The Compose service builds the image from the local `Dockerfile`, uses the `.env` file for
+
+configuration, and mounts:
+
+- `session/` → `/app/session` to persist the Telethon session across restarts.
+- `data/` → `/app/data` with `DB_URL=sqlite+aiosqlite:///data/db.sqlite3` injected automatically
+  so the deduplication cache lives outside the container.
+- `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.
+=======
 configuration, and mounts the `session/` directory and `db.sqlite3` database to persist the
 Telethon session and deduplication cache across restarts.
+
 
 ## Requirements
 

@@ -5,7 +5,10 @@ services:
     command: python run.py
     env_file:
       - .env
+    environment:
+      DB_URL: ${DB_URL:-sqlite+aiosqlite:///data/db.sqlite3}
     volumes:
       - ./session:/app/session
-      - ./db.sqlite3:/app/db.sqlite3
+      - ./data:/app/data
+      - ./keywords.txt:/app/keywords.txt:ro
     restart: unless-stopped
