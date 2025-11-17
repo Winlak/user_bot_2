@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
+import os
+import json
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -77,6 +79,8 @@ class Settings(BaseSettings):
     api_id: int
     api_hash: str
     session_name: str = "trustat_keyword_forwarder"
+    bot_token: str | None = None
+    phone_number: str | None = None
     source_channel: ChannelRef = "@trustat"
     target_channels: list[ChannelRef] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)
@@ -85,12 +89,81 @@ class Settings(BaseSettings):
     forwarding_enabled: bool = False
     forwarding_queue_maxsize: int = Field(default=0, ge=0)
     forwarding_delay_seconds: float = Field(default=1.0, ge=0.0)
+    forwarding_max_messages_per_second: float | None = Field(default=1.0)
+    keepalive_enabled: bool = True
+    keepalive_chat: ChannelRef = "@TrustatAlertsBot"
+    keepalive_command: str = "/start"
+    keepalive_interval_seconds: float = Field(default=60.0, ge=1.0)
     db_url: str | None = "sqlite+aiosqlite:///db.sqlite3"
     log_level: str = "INFO"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        dotenv_settings,
+        file_secret_settings,
+    ):
+        def _clean_target_channels(env_vars: dict) -> dict:
+            target_channels_key = "target_channels"
+            if target_channels_key in env_vars:
+                value = env_vars[target_channels_key]
+                if isinstance(value, str):
+                    cleaned = value.strip()
+                    if not cleaned:
+                        env_vars.pop(target_channels_key)
+                    else:
+                        try:
+                            env_vars[target_channels_key] = json.loads(cleaned)
+                        except json.JSONDecodeError:
+                            env_vars[target_channels_key] = _parse_channels(cleaned)
+                elif value is None:
+                    env_vars.pop(target_channels_key)
+            return env_vars
+
+        def _fallback_env_vars() -> dict[str, str]:
+            return {key.lower(): value for key, value in os.environ.items()}
+
+        def _fallback_dotenv_vars() -> dict[str, str]:
+            path = Path(".env")
+            if not path.exists():
+                return {}
+            env_vars: dict[str, str] = {}
+            for raw_line in path.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                env_vars[key.strip().lower()] = value.strip()
+            return env_vars
+
+        def _clean_source(source, *, fallback_name: str):
+            def _wrapped():
+                try:
+                    env_vars = source()
+                except Exception:
+                    if fallback_name == "env":
+                        env_vars = _fallback_env_vars()
+                    elif fallback_name == "dotenv":
+                        env_vars = _fallback_dotenv_vars()
+                    else:
+                        env_vars = {}
+                return _clean_target_channels(dict(env_vars))
+
+            return _wrapped
+
+        return (
+            init_settings,
+            _clean_source(env_settings, fallback_name="env"),
+            _clean_source(dotenv_settings, fallback_name="dotenv"),
+            file_secret_settings,
+        )
 
     @field_validator("source_channel", mode="before")
     @classmethod
@@ -121,6 +194,22 @@ class Settings(BaseSettings):
         if isinstance(value, Path):
             return value
         return Path(value).expanduser()
+
+    @field_validator("forwarding_max_messages_per_second")
+    @classmethod
+    def _validate_forwarding_rate(
+        cls, value: float | None
+    ) -> float | None:
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("forwarding_max_messages_per_second must be greater than zero")
+        return value
+
+    @field_validator("keepalive_chat", mode="before")
+    @classmethod
+    def _validate_keepalive_chat(cls, value: ChannelRef) -> ChannelRef:
+        return _parse_channel(value)
 
 
 @lru_cache
