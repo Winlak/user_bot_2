@@ -48,7 +48,6 @@ async def main() -> None:
     _configure_logging(settings.log_level)
     store: ForwardedMessageStore | None = None
     deduplicator: MessageDeduplicator | None = None
-
     last_message_at = time.monotonic()
 
     if settings.db_url:
@@ -109,7 +108,6 @@ async def main() -> None:
                     await keepalive_task
             if store:
                 await store.close()
-
 
 
 def _format_targets(targets: Sequence[int | str]) -> str:

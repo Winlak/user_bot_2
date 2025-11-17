@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import re
 from functools import lru_cache
+import os
 import json
-
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -88,12 +88,10 @@ class Settings(BaseSettings):
     forwarding_queue_maxsize: int = Field(default=0, ge=0)
     forwarding_delay_seconds: float = Field(default=1.0, ge=0.0)
     forwarding_max_messages_per_second: float | None = Field(default=1.0)
-
     keepalive_enabled: bool = True
     keepalive_chat: ChannelRef = "@TrustatAlertsBot"
     keepalive_command: str = "/start"
     keepalive_interval_seconds: float = Field(default=60.0, ge=1.0)
-
     db_url: str | None = "sqlite+aiosqlite:///db.sqlite3"
     log_level: str = "INFO"
 
@@ -112,7 +110,6 @@ class Settings(BaseSettings):
         file_secret_settings,
     ):
         def _clean_target_channels(env_vars: dict) -> dict:
-
             target_channels_key = "target_channels"
             if target_channels_key in env_vars:
                 value = env_vars[target_channels_key]
@@ -130,20 +127,42 @@ class Settings(BaseSettings):
             return env_vars
 
 
-        def _clean_source(source):
+        def _fallback_env_vars() -> dict[str, str]:
+            return {key.lower(): value for key, value in os.environ.items()}
+
+        def _fallback_dotenv_vars() -> dict[str, str]:
+            path = Path(".env")
+            if not path.exists():
+                return {}
+            env_vars: dict[str, str] = {}
+            for raw_line in path.read_text(encoding="utf-8").splitlines():
+                line = raw_line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                env_vars[key.strip().lower()] = value.strip()
+            return env_vars
+
+        def _clean_source(source, *, fallback_name: str):
             def _wrapped():
                 try:
                     env_vars = source()
                 except Exception:
-                    env_vars = {}
+                    if fallback_name == "env":
+                        env_vars = _fallback_env_vars()
+                    elif fallback_name == "dotenv":
+                        env_vars = _fallback_dotenv_vars()
+                    else:
+                        env_vars = {}
+
                 return _clean_target_channels(dict(env_vars))
 
             return _wrapped
 
         return (
             init_settings,
-            _clean_source(env_settings),
-            _clean_source(dotenv_settings),
+            _clean_source(env_settings, fallback_name="env"),
+            _clean_source(dotenv_settings, fallback_name="dotenv"),
             file_secret_settings,
         )
 
@@ -193,8 +212,6 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_keepalive_chat(cls, value: ChannelRef) -> ChannelRef:
         return _parse_channel(value)
-
-
 
 @lru_cache
 def get_settings() -> Settings:
