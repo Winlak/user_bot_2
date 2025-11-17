@@ -105,6 +105,9 @@ class Settings(BaseSettings):
         settings_cls,
         init_settings,
         env_settings,
+
+        dotenv_settings,
+
         file_secret_settings,
     ):
         def _clean_env_settings():
@@ -116,7 +119,14 @@ class Settings(BaseSettings):
                     env_vars.pop(target_channels_key)
             return env_vars
 
-        return init_settings, _clean_env_settings, file_secret_settings
+
+        return (
+            init_settings,
+            _clean_env_settings,
+            dotenv_settings,
+            file_secret_settings,
+        )
+
 
     @field_validator("source_channel", mode="before")
     @classmethod
