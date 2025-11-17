@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Sequence
+import time
+from contextlib import suppress
+from typing import Callable, Sequence
 
 from telethon import TelegramClient, events
 
@@ -47,6 +49,9 @@ async def main() -> None:
     store: ForwardedMessageStore | None = None
     deduplicator: MessageDeduplicator | None = None
 
+    last_message_at = time.monotonic()
+
+
     if settings.db_url:
         try:
             store = ForwardedMessageStore.from_url(settings.db_url)
@@ -69,6 +74,8 @@ async def main() -> None:
 
     @client.on(events.NewMessage(chats=settings.source_channel))
     async def handler(event):  # type: ignore[no-untyped-def]
+        nonlocal last_message_at
+        last_message_at = time.monotonic()
         payload = forwarder.build_payload(event)
         if payload is None:
             return
@@ -81,11 +88,28 @@ async def main() -> None:
         len(keywords),
     )
     async with client:
+        keepalive_task: asyncio.Task[None] | None = None
+        if settings.keepalive_enabled and settings.keepalive_chat:
+            keepalive_task = asyncio.create_task(
+                _run_keepalive(
+                    client,
+                    chat=settings.keepalive_chat,
+                    command=settings.keepalive_command,
+                    interval_seconds=settings.keepalive_interval_seconds,
+                    last_message_at=lambda: last_message_at,
+                )
+            )
         try:
             await client.run_until_disconnected()
         finally:
             await queue.join()
             await queue.stop()
+
+            if keepalive_task:
+                keepalive_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await keepalive_task
+
             if store:
                 await store.close()
 
@@ -94,6 +118,35 @@ def _format_targets(targets: Sequence[int | str]) -> str:
     if not targets:
         return "<none>"
     return ", ".join(str(target) for target in targets)
+
+
+async def _run_keepalive(
+    client: TelegramClient,
+    *,
+    chat: int | str,
+    command: str,
+    interval_seconds: float,
+    last_message_at: Callable[[], float],
+) -> None:
+    """Send a keepalive command periodically to trigger new alerts."""
+
+    while True:
+        await asyncio.sleep(interval_seconds)
+        idle_for = time.monotonic() - last_message_at()
+        if idle_for < interval_seconds:
+            continue
+        try:
+            await client.send_message(chat, command)
+            logger.info(
+                "Sent keepalive command %s to %s after %.1fs of inactivity",
+                command,
+                chat,
+                idle_for,
+            )
+        except Exception as exc:  # pragma: no cover - network dependent
+            logger.error(
+                "Failed to send keepalive command %s to %s: %s", command, chat, exc
+            )
 
 
 if __name__ == "__main__":

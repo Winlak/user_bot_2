@@ -102,6 +102,16 @@ authorisation session between runs.
   send more messages per second than the configured value (set to an empty string or remove the
   variable to disable the cap).
 
+
+## Keepalive pings
+
+- When enabled (default), the bot sends `/start` to `@TrustatAlertsBot` if no new messages arrive
+  from the source channel for at least 60 seconds. This nudges the alert bot to emit a fresh
+  notification.
+- Tune the behaviour with `KEEPALIVE_ENABLED`, `KEEPALIVE_CHAT`, `KEEPALIVE_COMMAND` and
+  `KEEPALIVE_INTERVAL_SECONDS`.
+
+
 ## Duplicate protection for linked posts
 
 - Each matched message is scanned for Telegram links; the referenced posts are fetched and
@@ -110,6 +120,14 @@ authorisation session between runs.
   same referenced post will not be forwarded twice even if multiple alerts include it.
 
 ## Docker Compose
+
+
+A `docker-compose.yml` file is provided for convenience and keeps both the Telethon session and
+the deduplication database on the host machine:
+
+```bash
+mkdir -p session data
+
 
 
 docker compose up --build
@@ -123,9 +141,10 @@ configuration, and mounts:
 - `data/` → `/app/data` with `DB_URL=sqlite+aiosqlite:///data/db.sqlite3` injected automatically
   so the deduplication cache lives outside the container.
 - `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.
-=======
+
 configuration, and mounts the `session/` directory and `db.sqlite3` database to persist the
 Telethon session and deduplication cache across restarts.
+
 
 
 ## Requirements

@@ -86,6 +86,12 @@ class Settings(BaseSettings):
     forwarding_queue_maxsize: int = Field(default=0, ge=0)
     forwarding_delay_seconds: float = Field(default=1.0, ge=0.0)
     forwarding_max_messages_per_second: float | None = Field(default=1.0)
+
+    keepalive_enabled: bool = True
+    keepalive_chat: ChannelRef = "@TrustatAlertsBot"
+    keepalive_command: str = "/start"
+    keepalive_interval_seconds: float = Field(default=60.0, ge=1.0)
+
     db_url: str | None = "sqlite+aiosqlite:///db.sqlite3"
     log_level: str = "INFO"
 
@@ -133,6 +139,12 @@ class Settings(BaseSettings):
         if value <= 0:
             raise ValueError("forwarding_max_messages_per_second must be greater than zero")
         return value
+
+    @field_validator("keepalive_chat", mode="before")
+    @classmethod
+    def _validate_keepalive_chat(cls, value: ChannelRef) -> ChannelRef:
+        return _parse_channel(value)
+
 
 
 @lru_cache
