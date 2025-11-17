@@ -6,6 +6,7 @@ import asyncio
 import logging
 import time
 from pathlib import Path
+
 from contextlib import suppress
 from typing import Callable, Sequence
 
@@ -103,6 +104,7 @@ async def main() -> None:
     try:
         await client.start(**start_kwargs)
 
+
         if settings.keepalive_enabled and settings.keepalive_chat:
             keepalive_task = asyncio.create_task(
                 _run_keepalive(
@@ -113,6 +115,7 @@ async def main() -> None:
                     last_message_at=lambda: last_message_at,
                 )
             )
+
 
         await client.run_until_disconnected()
     finally:
