@@ -1,3 +1,4 @@
 pydantic==2.7.3
 pydantic-settings==2.2.1
 Telethon==1.36.0
+aiosqlite==0.20.0
