@@ -105,6 +105,7 @@ class Settings(BaseSettings):
         settings_cls,
         init_settings,
         env_settings,
+
         dotenv_settings,
         file_secret_settings,
     ):
@@ -124,6 +125,7 @@ class Settings(BaseSettings):
                 elif value is None:
                     env_vars.pop(target_channels_key)
             return env_vars
+
 
         def _fallback_env_vars() -> dict[str, str]:
             return {key.lower(): value for key, value in os.environ.items()}
@@ -152,6 +154,7 @@ class Settings(BaseSettings):
                         env_vars = _fallback_dotenv_vars()
                     else:
                         env_vars = {}
+
                 return _clean_target_channels(dict(env_vars))
 
             return _wrapped
@@ -162,6 +165,7 @@ class Settings(BaseSettings):
             _clean_source(dotenv_settings, fallback_name="dotenv"),
             file_secret_settings,
         )
+
 
     @field_validator("source_channel", mode="before")
     @classmethod
@@ -208,7 +212,6 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_keepalive_chat(cls, value: ChannelRef) -> ChannelRef:
         return _parse_channel(value)
-
 
 @lru_cache
 def get_settings() -> Settings:
