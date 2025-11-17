@@ -12,21 +12,9 @@ from telethon.errors import RPCError
 from telethon.events import NewMessage
 from telethon.tl.types import Message
 
+from .dedup import MessageDeduplicator
+from .messages import message_identity
 
-def _message_identity(message: Message) -> tuple[int | None, int]:
-    """Return a hashable identity for a Telethon message."""
-
-    peer = message.peer_id
-    if peer is None:
-        return (None, message.id)
-    channel_id = getattr(peer, "channel_id", None)
-    if channel_id is not None:
-        return (channel_id, message.id)
-    chat_id = getattr(peer, "chat_id", None)
-    if chat_id is not None:
-        return (chat_id, message.id)
-    user_id = getattr(peer, "user_id", None)
-    return (user_id, message.id)
 
 ChannelRef = int | str
 
@@ -52,9 +40,15 @@ class KeywordForwarder:
     target_channels: Sequence[ChannelRef]
     case_sensitive: bool = False
     forwarding_enabled: bool = True
+    deduplicator: MessageDeduplicator | None = None
     logger: logging.Logger = field(
         default_factory=lambda: logging.getLogger("keyword_forwarder")
     )
+    _keywords: tuple[str, ...] = field(init=False, repr=False, default_factory=tuple)
+    _normalised_keywords: tuple[str, ...] = field(
+        init=False, repr=False, default_factory=tuple
+    )
+    _targets: tuple[ChannelRef, ...] = field(init=False, repr=False, default_factory=tuple)
 
     def __post_init__(self) -> None:
         self.update_keywords(self.keywords)
@@ -134,6 +128,14 @@ class KeywordForwarder:
             return
 
         messages = await self._resolve_messages(payload)
+        if payload.links and self.deduplicator:
+            messages = await self.deduplicator.filter_new(messages)
+            if not messages:
+                self.logger.info(
+                    "Skipping forwarding of message %s because linked posts were already processed",
+                    payload.event.id,
+                )
+                return
         if not messages:
             self.logger.warning(
                 "No resolvable target messages found for source %s; forwarding original alert.",
@@ -164,7 +166,7 @@ class KeywordForwarder:
         deduped: list[Message] = []
         seen: set[tuple[int | None, int]] = set()
         for message in resolved:
-            identity = _message_identity(message)
+            identity = message_identity(message)
             if identity in seen:
                 continue
             seen.add(identity)
@@ -232,9 +234,13 @@ class ForwardingQueue:
         *,
         maxsize: int = 0,
         delay_seconds: float = 0.0,
+        max_messages_per_second: float | None = None,
     ) -> None:
         self.forwarder = forwarder
         self.delay_seconds = max(0.0, delay_seconds)
+        self.max_messages_per_second = (
+            max_messages_per_second if max_messages_per_second and max_messages_per_second > 0 else None
+        )
         self._queue: asyncio.Queue[ForwardPayload] = asyncio.Queue(maxsize=maxsize)
         self._worker: asyncio.Task[None] | None = None
         self.logger = logging.getLogger("keyword_forwarder.queue")
@@ -273,5 +279,12 @@ class ForwardingQueue:
                 )
             finally:
                 self._queue.task_done()
-            if self.delay_seconds:
-                await asyncio.sleep(self.delay_seconds)
+            await self._apply_throttle()
+
+    async def _apply_throttle(self) -> None:
+        delay = self.delay_seconds
+        if self.max_messages_per_second:
+            interval = 1.0 / self.max_messages_per_second
+            delay = max(delay, interval)
+        if delay:
+            await asyncio.sleep(delay)
