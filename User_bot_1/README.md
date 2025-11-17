@@ -109,7 +109,6 @@ authorisation session between runs.
   send more messages per second than the configured value (set to an empty string or remove the
   variable to disable the cap).
 
-
 ## Keepalive pings
 
 - When enabled (default), the bot sends `/start` to `@TrustatAlertsBot` if no new messages arrive

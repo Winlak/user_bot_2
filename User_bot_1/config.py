@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 import json
-import os
+
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -111,11 +111,7 @@ class Settings(BaseSettings):
         dotenv_settings,
         file_secret_settings,
     ):
-        def _clean_env_settings():
-            try:
-                env_vars = env_settings()
-            except Exception:
-                env_vars = {k.lower(): v for k, v in os.environ.items()}
+        def _clean_target_channels(env_vars: dict) -> dict:
 
             target_channels_key = "target_channels"
             if target_channels_key in env_vars:
@@ -134,10 +130,20 @@ class Settings(BaseSettings):
             return env_vars
 
 
+        def _clean_source(source):
+            def _wrapped():
+                try:
+                    env_vars = source()
+                except Exception:
+                    env_vars = {}
+                return _clean_target_channels(dict(env_vars))
+
+            return _wrapped
+
         return (
             init_settings,
-            _clean_env_settings,
-            dotenv_settings,
+            _clean_source(env_settings),
+            _clean_source(dotenv_settings),
             file_secret_settings,
         )
 
