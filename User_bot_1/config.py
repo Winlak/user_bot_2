@@ -85,6 +85,7 @@ class Settings(BaseSettings):
     forwarding_enabled: bool = False
     forwarding_queue_maxsize: int = Field(default=0, ge=0)
     forwarding_delay_seconds: float = Field(default=1.0, ge=0.0)
+    forwarding_max_messages_per_second: float | None = Field(default=1.0)
     db_url: str | None = "sqlite+aiosqlite:///db.sqlite3"
     log_level: str = "INFO"
 
@@ -121,6 +122,17 @@ class Settings(BaseSettings):
         if isinstance(value, Path):
             return value
         return Path(value).expanduser()
+
+    @field_validator("forwarding_max_messages_per_second")
+    @classmethod
+    def _validate_forwarding_rate(
+        cls, value: float | None
+    ) -> float | None:
+        if value is None:
+            return None
+        if value <= 0:
+            raise ValueError("forwarding_max_messages_per_second must be greater than zero")
+        return value
 
 
 @lru_cache
