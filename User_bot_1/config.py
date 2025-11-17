@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 import json
+
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -87,10 +88,12 @@ class Settings(BaseSettings):
     forwarding_queue_maxsize: int = Field(default=0, ge=0)
     forwarding_delay_seconds: float = Field(default=1.0, ge=0.0)
     forwarding_max_messages_per_second: float | None = Field(default=1.0)
+
     keepalive_enabled: bool = True
     keepalive_chat: ChannelRef = "@TrustatAlertsBot"
     keepalive_command: str = "/start"
     keepalive_interval_seconds: float = Field(default=60.0, ge=1.0)
+
     db_url: str | None = "sqlite+aiosqlite:///db.sqlite3"
     log_level: str = "INFO"
 
@@ -104,10 +107,12 @@ class Settings(BaseSettings):
         settings_cls,
         init_settings,
         env_settings,
+
         dotenv_settings,
         file_secret_settings,
     ):
         def _clean_target_channels(env_vars: dict) -> dict:
+
             target_channels_key = "target_channels"
             if target_channels_key in env_vars:
                 value = env_vars[target_channels_key]
@@ -123,6 +128,7 @@ class Settings(BaseSettings):
                 elif value is None:
                     env_vars.pop(target_channels_key)
             return env_vars
+
 
         def _clean_source(source):
             def _wrapped():
@@ -140,6 +146,7 @@ class Settings(BaseSettings):
             _clean_source(dotenv_settings),
             file_secret_settings,
         )
+
 
     @field_validator("source_channel", mode="before")
     @classmethod
@@ -186,6 +193,7 @@ class Settings(BaseSettings):
     @classmethod
     def _validate_keepalive_chat(cls, value: ChannelRef) -> ChannelRef:
         return _parse_channel(value)
+
 
 
 @lru_cache
