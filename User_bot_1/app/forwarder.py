@@ -44,6 +44,11 @@ class KeywordForwarder:
     logger: logging.Logger = field(
         default_factory=lambda: logging.getLogger("keyword_forwarder")
     )
+    _keywords: tuple[str, ...] = field(init=False, repr=False, default_factory=tuple)
+    _normalised_keywords: tuple[str, ...] = field(
+        init=False, repr=False, default_factory=tuple
+    )
+    _targets: tuple[ChannelRef, ...] = field(init=False, repr=False, default_factory=tuple)
 
     def __post_init__(self) -> None:
         self.update_keywords(self.keywords)

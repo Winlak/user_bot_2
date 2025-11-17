@@ -27,7 +27,6 @@ message and forwards the original content instead of the notification.
     # FORWARDING_QUEUE_MAXSIZE=100
     # FORWARDING_DELAY_SECONDS=1.5
     # DB_URL=sqlite+aiosqlite:///db.sqlite3
-
     # Optional keepalive to retrigger alerts when the source stays quiet:
     # KEEPALIVE_ENABLED=true
     # KEEPALIVE_CHAT=@TrustatAlertsBot
@@ -137,7 +136,8 @@ configuration, and mounts:
 - `session/` → `/app/session` to persist the Telethon session across restarts.
 - `data/` → `/app/data` with `DB_URL=sqlite+aiosqlite:///data/db.sqlite3` injected automatically
   so the deduplication cache lives outside the container.
-- `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.ё
+- `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.
+
 
 ## Requirements
 
