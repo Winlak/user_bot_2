@@ -99,6 +99,25 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls,
+        init_settings,
+        env_settings,
+        file_secret_settings,
+    ):
+        def _clean_env_settings():
+            env_vars = env_settings()
+            target_channels_key = "target_channels"
+            if target_channels_key in env_vars:
+                value = env_vars[target_channels_key]
+                if isinstance(value, str) and not value.strip():
+                    env_vars.pop(target_channels_key)
+            return env_vars
+
+        return init_settings, _clean_env_settings, file_secret_settings
+
     @field_validator("source_channel", mode="before")
     @classmethod
     def _validate_source_channel(cls, value: ChannelRef) -> ChannelRef:

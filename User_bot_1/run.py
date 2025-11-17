@@ -52,6 +52,7 @@ async def main() -> None:
     last_message_at = time.monotonic()
 
 
+
     if settings.db_url:
         try:
             store = ForwardedMessageStore.from_url(settings.db_url)
@@ -104,6 +105,12 @@ async def main() -> None:
         finally:
             await queue.join()
             await queue.stop()
+            if keepalive_task:
+                keepalive_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await keepalive_task
+            if store:
+                await store.close()
 
             if keepalive_task:
                 keepalive_task.cancel()
