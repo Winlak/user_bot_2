@@ -1,0 +1,106 @@
+# Trustat keyword forwarder
+
+This project contains a [Telethon](https://github.com/LonamiWebs/Telethon) client that listens to
+messages published by a source channel (by default `@trustat`) and forwards every post that
+contains one of the configured keywords to the target channels of your choice. When the matching
+message is an alert that links to another post, the bot follows the link, fetches the referenced
+message and forwards the original content instead of the notification.
+
+## Quick start
+
+1. Install the dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Create a `.env` file next to `run.py` and provide your Telegram API credentials and
+   configuration. A minimal configuration looks like this:
+
+   ```env
+    API_ID=123456
+    API_HASH=0123456789abcdef0123456789abcdef
+    TARGET_CHANNELS=@my_forward_channel
+    FORWARDING_ENABLED=true
+    # Optional overrides:
+    # SESSION_NAME=trustat_keyword_forwarder
+    # SOURCE_CHANNEL=@trustat
+    # LOG_LEVEL=INFO
+    # FORWARDING_QUEUE_MAXSIZE=100
+    # FORWARDING_DELAY_SECONDS=1.5
+    # KEYWORDS_FILE=keywords.txt
+    # KEYWORDS=keyword1,keyword2
+    ```
+
+   - `TARGET_CHANNELS` accepts a comma-separated list of usernames (prefixed with `@`) or
+     numeric channel IDs (for private channels start them with `-100`).
+   - By default the bot reads the keyword list from `keywords.txt`. You can edit the file to
+     customise the keywords without touching the code. If you prefer to store the list in the
+     environment you can set the `KEYWORDS` variable instead.
+
+3. Run the bot:
+
+   ```bash
+   python run.py
+   ```
+
+   On the first run Telethon will ask you for the phone number that is linked to the Telegram API
+   credentials and a login code. The session is stored locally using the `SESSION_NAME` value.
+
+   > **Safety net:** Unless `FORWARDING_ENABLED` is explicitly set to `true`, the bot stays in
+   > a dry-run mode and will never send messages to the target channels. This makes it safe to
+   > test the configuration without accidentally publishing content.
+
+## Keyword matching rules
+
+- Matching is case-insensitive by default. Set `CASE_SENSITIVE_KEYWORDS=true` in the environment
+  to change this behaviour.
+- Keywords may contain spaces, emojis and hashtags.
+- If a keyword is a substring of the message, the message will be forwarded. This makes it easy to
+  use both single words and phrases.
+
+## Project layout
+
+- `run.py` – the application entry point. It configures logging, creates the Telethon client and
+  registers the keyword-forwarding handler.
+- `config.py` – settings management powered by `pydantic-settings`. It loads environment variables,
+  the keyword list and takes care of converting channel identifiers.
+- `app/forwarder.py` – the forwarding logic encapsulated in a reusable callable class with a queue
+  that sequences outgoing forwards to respect Telegram rate limits.
+- `keywords.txt` – default keyword list that can be adjusted without modifying the code.
+
+## Docker image
+
+The repository ships with a `Dockerfile` so you can build a container image and run the bot in an
+isolated environment:
+
+```bash
+docker build -t trustat-forwarder .
+docker run --rm \
+  -e API_ID=123456 \
+  -e API_HASH=0123456789abcdef0123456789abcdef \
+  -e TARGET_CHANNELS=@my_forward_channel \
+  -e FORWARDING_ENABLED=true \
+  -v $(pwd)/session:/app/session \
+  trustat-forwarder
+```
+
+The example mounts a local `session/` directory into the container so Telethon can persist the
+authorisation session between runs.
+
+## Rate limiting queue
+
+- The bot buffers matched messages inside a queue to avoid hitting Telegram forwarding limits.
+- The queue size is controlled by `FORWARDING_QUEUE_MAXSIZE` (set it to `0` for an unbounded
+  queue).
+- After each forwarding operation the bot waits for `FORWARDING_DELAY_SECONDS` before processing
+  the next payload. Increase this value if you experience flood wait errors.
+
+## Requirements
+
+The project depends on:
+
+- `Telethon` for interacting with Telegram.
+- `pydantic` and `pydantic-settings` for structured configuration loading.
+
+Install them with `pip install -r requirements.txt` before running the bot.
