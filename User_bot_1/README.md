@@ -114,7 +114,6 @@ authorisation session between runs.
   notification.
 - Tune the behaviour with `KEEPALIVE_ENABLED`, `KEEPALIVE_CHAT`, `KEEPALIVE_COMMAND` and
   `KEEPALIVE_INTERVAL_SECONDS`.
-
 ## Duplicate protection for linked posts
 
 - Each matched message is scanned for Telegram links; the referenced posts are fetched and
@@ -123,7 +122,6 @@ authorisation session between runs.
   same referenced post will not be forwarded twice even if multiple alerts include it.
 
 ## Docker Compose
-
 A `docker-compose.yml` file is provided for convenience and keeps both the Telethon session and
 the deduplication database on the host machine:
 
@@ -139,6 +137,7 @@ configuration, and mounts:
 - `data/` → `/app/data` with `DB_URL=sqlite+aiosqlite:///data/db.sqlite3` injected automatically
   so the deduplication cache lives outside the container.
 - `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.
+
 
 ## Requirements
 

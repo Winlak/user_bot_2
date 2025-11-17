@@ -209,7 +209,6 @@ class Settings(BaseSettings):
     def _validate_keepalive_chat(cls, value: ChannelRef) -> ChannelRef:
         return _parse_channel(value)
 
-
 @lru_cache
 def get_settings() -> Settings:
     """Return a cached instance of :class:`Settings`."""
