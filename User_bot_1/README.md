@@ -20,6 +20,7 @@ message and forwards the original content instead of the notification.
    ```env
     API_ID=123456
     API_HASH=0123456789abcdef0123456789abcdef
+    BOT_TOKEN=1234567:ABCDEF_your_bot_token
     TARGET_CHANNELS=@my_forward_channel
     FORWARDING_ENABLED=true
     # Optional rate/queue controls and persistence:
@@ -52,8 +53,12 @@ message and forwards the original content instead of the notification.
    python run.py
    ```
 
-   On the first run Telethon will ask you for the phone number that is linked to the Telegram API
-   credentials and a login code. The session is stored locally using the `SESSION_NAME` value.
+   If you supply `BOT_TOKEN`, Telethon performs a fully non-interactive login and no prompts are
+   shown. Without `BOT_TOKEN`, Telethon will ask for the phone number linked to the Telegram API
+   credentials and a login code on the first run (or you can pre-fill `PHONE_NUMBER` to avoid the
+   phone prompt but you will still need the code). The session is stored locally using the
+   `SESSION_NAME` value; if neither a session file nor `BOT_TOKEN`/`PHONE_NUMBER` is present, the
+   bot exits immediately with a clear error message instead of hanging on an interactive prompt.
 
    > **Safety net:** Unless `FORWARDING_ENABLED` is explicitly set to `true`, the bot stays in
    > a dry-run mode and will never send messages to the target channels. This makes it safe to
@@ -87,6 +92,7 @@ docker build -t trustat-forwarder .
 docker run --rm \
   -e API_ID=123456 \
   -e API_HASH=0123456789abcdef0123456789abcdef \
+  -e BOT_TOKEN=1234567:ABCDEF_your_bot_token \
   -e TARGET_CHANNELS=@my_forward_channel \
   -e FORWARDING_ENABLED=true \
   -v $(pwd)/session:/app/session \
@@ -137,7 +143,6 @@ configuration, and mounts:
 - `data/` → `/app/data` with `DB_URL=sqlite+aiosqlite:///data/db.sqlite3` injected automatically
   so the deduplication cache lives outside the container.
 - `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.
-
 
 ## Requirements
 

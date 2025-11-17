@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     api_id: int
     api_hash: str
     session_name: str = "trustat_keyword_forwarder"
+    bot_token: str | None = None
+    phone_number: str | None = None
     source_channel: ChannelRef = "@trustat"
     target_channels: list[ChannelRef] = Field(default_factory=list)
     keywords: list[str] = Field(default_factory=list)

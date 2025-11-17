@@ -5,6 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from pathlib import Path
+
 from contextlib import suppress
 from typing import Callable, Sequence
 
@@ -85,8 +87,24 @@ async def main() -> None:
         _format_targets(settings.target_channels),
         len(keywords),
     )
-    async with client:
-        keepalive_task: asyncio.Task[None] | None = None
+
+    start_kwargs: dict[str, str] = {}
+    if settings.bot_token:
+        start_kwargs["bot_token"] = settings.bot_token
+    elif settings.phone_number:
+        start_kwargs["phone"] = settings.phone_number
+
+    session_file = Path(f"{settings.session_name}.session")
+    if not start_kwargs and not session_file.exists():
+        raise RuntimeError(
+            "Missing BOT_TOKEN/PHONE_NUMBER and no existing session found; provide credentials"
+        )
+
+    keepalive_task: asyncio.Task[None] | None = None
+    try:
+        await client.start(**start_kwargs)
+
+
         if settings.keepalive_enabled and settings.keepalive_chat:
             keepalive_task = asyncio.create_task(
                 _run_keepalive(
@@ -97,17 +115,19 @@ async def main() -> None:
                     last_message_at=lambda: last_message_at,
                 )
             )
-        try:
-            await client.run_until_disconnected()
-        finally:
-            await queue.join()
-            await queue.stop()
-            if keepalive_task:
-                keepalive_task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await keepalive_task
-            if store:
-                await store.close()
+
+
+        await client.run_until_disconnected()
+    finally:
+        await queue.join()
+        await queue.stop()
+        if keepalive_task:
+            keepalive_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await keepalive_task
+        if store:
+            await store.close()
+        await client.disconnect()
 
 
 def _format_targets(targets: Sequence[int | str]) -> str:
