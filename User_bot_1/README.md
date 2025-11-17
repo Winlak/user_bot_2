@@ -22,12 +22,20 @@ message and forwards the original content instead of the notification.
     API_HASH=0123456789abcdef0123456789abcdef
     TARGET_CHANNELS=@my_forward_channel
     FORWARDING_ENABLED=true
+    # Optional rate/queue controls and persistence:
+    # FORWARDING_MAX_MESSAGES_PER_SECOND=1.0
+    # FORWARDING_QUEUE_MAXSIZE=100
+    # FORWARDING_DELAY_SECONDS=1.5
+    # DB_URL=sqlite+aiosqlite:///db.sqlite3
+    # Optional keepalive to retrigger alerts when the source stays quiet:
+    # KEEPALIVE_ENABLED=true
+    # KEEPALIVE_CHAT=@TrustatAlertsBot
+    # KEEPALIVE_COMMAND=/start
+    # KEEPALIVE_INTERVAL_SECONDS=60
     # Optional overrides:
     # SESSION_NAME=trustat_keyword_forwarder
     # SOURCE_CHANNEL=@trustat
     # LOG_LEVEL=INFO
-    # FORWARDING_QUEUE_MAXSIZE=100
-    # FORWARDING_DELAY_SECONDS=1.5
     # KEYWORDS_FILE=keywords.txt
     # KEYWORDS=keyword1,keyword2
     ```
@@ -95,6 +103,42 @@ authorisation session between runs.
   queue).
 - After each forwarding operation the bot waits for `FORWARDING_DELAY_SECONDS` before processing
   the next payload. Increase this value if you experience flood wait errors.
+- `FORWARDING_MAX_MESSAGES_PER_SECOND` enforces a hard throughput ceiling; the worker will not
+  send more messages per second than the configured value (set to an empty string or remove the
+  variable to disable the cap).
+
+## Keepalive pings
+
+- When enabled (default), the bot sends `/start` to `@TrustatAlertsBot` if no new messages arrive
+  from the source channel for at least 60 seconds. This nudges the alert bot to emit a fresh
+  notification.
+- Tune the behaviour with `KEEPALIVE_ENABLED`, `KEEPALIVE_CHAT`, `KEEPALIVE_COMMAND` and
+  `KEEPALIVE_INTERVAL_SECONDS`.
+
+## Duplicate protection for linked posts
+
+- Each matched message is scanned for Telegram links; the referenced posts are fetched and
+  forwarded instead of the alert wrapper.
+- Linked posts are deduplicated using a small SQLite database (configurable via `DB_URL`), so the
+  same referenced post will not be forwarded twice even if multiple alerts include it.
+
+## Docker Compose
+
+A `docker-compose.yml` file is provided for convenience and keeps both the Telethon session and
+the deduplication database on the host machine:
+
+```bash
+mkdir -p session data
+docker compose up --build
+```
+
+The Compose service builds the image from the local `Dockerfile`, uses the `.env` file for
+configuration, and mounts:
+
+- `session/` → `/app/session` to persist the Telethon session across restarts.
+- `data/` → `/app/data` with `DB_URL=sqlite+aiosqlite:///data/db.sqlite3` injected automatically
+  so the deduplication cache lives outside the container.
+- `keywords.txt` in read-only mode so you can adjust the keyword list without rebuilding the image.
 
 ## Requirements
 
