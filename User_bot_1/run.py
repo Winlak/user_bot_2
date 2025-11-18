@@ -71,10 +71,15 @@ async def main() -> None:
     await queue.start()
 
     session: str | StringSession
+    session_file = Path(settings.session_name)
+
     if settings.session_string:
         session = StringSession(settings.session_string)
     else:
-        session = settings.session_name
+        if not session_file.is_absolute():
+            session_file = Path.cwd() / session_file
+        session_file.parent.mkdir(parents=True, exist_ok=True)
+        session = str(session_file)
 
     client = TelegramClient(session, settings.api_id, settings.api_hash)
 
@@ -102,7 +107,6 @@ async def main() -> None:
             await client.start(bot_token=settings.bot_token)
 
         if not await client.is_user_authorized():
-            session_file = Path(f"{settings.session_name}.session")
             raise RuntimeError(
                 "Session is not authorised. Log in once interactively and mount the resulting "
                 f"session file ({session_file}), supply SESSION_STRING, or provide BOT_TOKEN for "

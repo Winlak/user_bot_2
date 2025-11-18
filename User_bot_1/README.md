@@ -50,7 +50,8 @@ message and forwards the original content instead of the notification.
 3. (Optional) If you already have an authorised session, you can export it as a Telethon
    `SESSION_STRING` and provide it via environment variable to skip any login prompts entirely.
    Alternatively, mount a `SESSION_NAME.session` file in the working directory; both approaches
-   avoid the interactive phone/code step.
+   avoid the interactive phone/code step. The default path is
+   `session/trustat_keyword_forwarder.session`, which fits the included Docker volume mapping.
 
 4. Run the bot:
 
@@ -63,9 +64,10 @@ message and forwards the original content instead of the notification.
    Without those values, Telethon will ask for the phone number linked to the Telegram API
    credentials and a login code on the first run (or you can pre-fill `PHONE_NUMBER` to avoid the
    phone prompt but you will still need the code). The session is stored locally using the
-   `SESSION_NAME` value; if no session file, `SESSION_STRING`, or `BOT_TOKEN`/`PHONE_NUMBER` is
-   present, the bot exits immediately with a clear error message instead of hanging on an
-   interactive prompt.
+   `SESSION_NAME` value (by default `session/trustat_keyword_forwarder`), so it lands inside the
+   bundled `session/` directory when you run under Docker. If no session file, `SESSION_STRING`, or
+   `BOT_TOKEN`/`PHONE_NUMBER` is present, the bot exits immediately with a clear error message
+   instead of hanging on an interactive prompt.
 
    > **Safety net:** Unless `FORWARDING_ENABLED` is explicitly set to `true`, the bot stays in
    > a dry-run mode and will never send messages to the target channels. This makes it safe to
