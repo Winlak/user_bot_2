@@ -6,7 +6,6 @@ import asyncio
 import logging
 import time
 from pathlib import Path
-
 from contextlib import suppress
 from typing import Callable, Sequence
 
@@ -88,22 +87,19 @@ async def main() -> None:
         len(keywords),
     )
 
-    start_kwargs: dict[str, str] = {}
-    if settings.bot_token:
-        start_kwargs["bot_token"] = settings.bot_token
-    elif settings.phone_number:
-        start_kwargs["phone"] = settings.phone_number
-
-    session_file = Path(f"{settings.session_name}.session")
-    if not start_kwargs and not session_file.exists():
-        raise RuntimeError(
-            "Missing BOT_TOKEN/PHONE_NUMBER and no existing session found; provide credentials"
-        )
-
     keepalive_task: asyncio.Task[None] | None = None
     try:
-        await client.start(**start_kwargs)
+        await client.connect()
 
+        if settings.bot_token and not await client.is_user_authorized():
+            await client.start(bot_token=settings.bot_token)
+
+        if not await client.is_user_authorized():
+            session_file = Path(f"{settings.session_name}.session")
+            raise RuntimeError(
+                "Session is not authorised. Log in once interactively and mount the resulting "
+                f"session file ({session_file}) or supply BOT_TOKEN for non-interactive startup."
+            )
 
         if settings.keepalive_enabled and settings.keepalive_chat:
             keepalive_task = asyncio.create_task(
@@ -115,8 +111,6 @@ async def main() -> None:
                     last_message_at=lambda: last_message_at,
                 )
             )
-
-
         await client.run_until_disconnected()
     finally:
         await queue.join()

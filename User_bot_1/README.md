@@ -114,12 +114,12 @@ authorisation session between runs.
   variable to disable the cap).
 
 ## Keepalive pings
-
 - When enabled (default), the bot sends `/start` to `@TrustatAlertsBot` if no new messages arrive
   from the source channel for at least 60 seconds. This nudges the alert bot to emit a fresh
   notification.
 - Tune the behaviour with `KEEPALIVE_ENABLED`, `KEEPALIVE_CHAT`, `KEEPALIVE_COMMAND` and
   `KEEPALIVE_INTERVAL_SECONDS`.
+
 ## Duplicate protection for linked posts
 
 - Each matched message is scanned for Telegram links; the referenced posts are fetched and
