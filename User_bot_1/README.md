@@ -114,7 +114,6 @@ authorisation session between runs.
   variable to disable the cap).
 
 ## Keepalive pings
-
 - When enabled (default), the bot sends `/start` to `@TrustatAlertsBot` if no new messages arrive
   from the source channel for at least 60 seconds. This nudges the alert bot to emit a fresh
   notification.
@@ -129,7 +128,6 @@ authorisation session between runs.
   same referenced post will not be forwarded twice even if multiple alerts include it.
 
 ## Docker Compose
-
 A `docker-compose.yml` file is provided for convenience and keeps both the Telethon session and
 the deduplication database on the host machine:
 
