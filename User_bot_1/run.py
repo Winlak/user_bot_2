@@ -123,7 +123,6 @@ async def main() -> None:
                     last_message_at=lambda: last_message_at,
                 )
             )
-
         await client.run_until_disconnected()
     finally:
         await queue.join()
