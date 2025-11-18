@@ -78,7 +78,8 @@ class Settings(BaseSettings):
 
     api_id: int
     api_hash: str
-    session_name: str = "trustat_keyword_forwarder"
+    session_name: str = "session/trustat_keyword_forwarder"
+    session_string: str | None = None
     bot_token: str | None = None
     phone_number: str | None = None
     source_channel: ChannelRef = "@trustat"
